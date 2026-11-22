@@ -4,9 +4,11 @@ kind = "python"
 python = "3.11"
 title = "swarm-mcp"
 dual = ["tools/"]
-# CITATION.cff seed and cite badge (swarm-routing/.github#636: versioned releases). Once
-# Zenodo archives the first release, org-bot's `zenodo` task sets zenodo_concept.
+# CITATION.cff seed and cite badge (swarm-routing/.github#636: versioned releases), cited
+# by release tag: no Zenodo archive and no DOI (maintainer decision 2026-11-22,
+# swarm-routing/.github#811), so no zenodo_concept, no DOI badge.
 citation = true
+zenodo = false
 posture = "the org's agent tooling: a local, read-only MCP server over the org's scripts, no simulation code"
 description = """
 `swarm-mcp`, the swarm-routing org's **MCP server**: a local, read-only
