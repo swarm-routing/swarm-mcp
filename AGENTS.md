@@ -20,8 +20,9 @@ released on its own.
 
 **Status: the seven read-only tools, moved from swarm-routing/skills
 (`tools/swarm-mcp/` there, as of skills commit `02e08bad8043a4cf128c7f87ec47faa3850cb8cf`,
-swarm-routing/skills#185); nothing released yet (`docs/roadmap.md`: v0.1.0
-first).** The design is [ADR-0002](docs/adr/0002-swarm-mcp-is-a-local-read-only-mcp-server.md).
+swarm-routing/skills#185); v0.1.0 released 2026-11-22, the commit the
+skills plugin's `swarm-mcp.lock` pins (`docs/roadmap.md`); its page on the
+org site: https://swarm-routing.github.io/projects/swarm-mcp/.** The design is [ADR-0002](docs/adr/0002-swarm-mcp-is-a-local-read-only-mcp-server.md).
 
 ```
 tools/swarm-mcp/swarm_mcp.py       the server: JSON-RPC 2.0 over stdio (dual-era MCP), the tool table, argument checks,
