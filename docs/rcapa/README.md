@@ -13,20 +13,17 @@ own changes, and why. The org's rule and its decision table are in
 ([ADR-0003](https://github.com/swarm-routing/.github/blob/main/docs/adr/0003-rcapa-for-ns3-bugs-and-released-regressions.md)).
 This page is the project's flow and its index.
 
-<!-- Seeded by org-sync from swarm-routing/.github templates/rcapa/README.md;
-the repository's own from here. Replace every TODO with this project's facts
-(its AGENTS.md, release.yml and docs), then delete this comment. -->
 
 ## The flow for this project
 
 | | |
 |---|---|
-| Published as | TODO: the versions other projects consume and who pins them (a lock, PyPI, a vcpkg port), or "RCAPA does not apply: <reason>" |
-| ID prefix | TODO: `<PREFIX>-NNN` (CONTRIBUTING "RCAPA", the prefix table) |
-| Ticket | an issue in swarm-routing/swarm-mcp, form *Regression in a release (RCAPA)*, title `[rcapa] <PREFIX>-NNN <short description>`, labels `rcapa` and `bug` |
-| Verified by | TODO: the consumer's failing check on the new version against the old one, and this project's own gates |
-| Corrective action | TODO: the fix and its test, and how a fixed release is cut |
-| Preventive action | TODO: the check that would have caught it before the release |
+| Published as | Nothing released yet (`docs/roadmap.md`: v0.1.0 first). One consumer pins it: the swarm-routing/skills plugin runs the commit its `swarm-mcp.lock` names. From the first release on, a regression in a tagged release the plugin pins gets an RCAPA here; a defect in a script a tool runs lives with that script (swarm-routing/.github `tools/`, which takes none) |
+| ID prefix | `MCP-NNN` (proposed; its row in CONTRIBUTING "RCAPA"'s prefix table is added in swarm-routing/.github) |
+| Ticket | an issue in swarm-routing/swarm-mcp, form *Regression in a release (RCAPA)*, title `[rcapa] MCP-NNN <short description>`, labels `rcapa` and `bug` |
+| Verified by | the failing call through the plugin at the new pin against the old one (a `tools/call` request on stdin, the reply on stdout), and `make check` here |
+| Corrective action | the fix with a self-test case that fails before it, a release cut on the maintainer's request (`release.yml`), and the pin moved to it in swarm-routing/skills |
+| Preventive action | the self-test case, or a check in skills' `tools/checks/test_mcp_launcher.py` when the launch path is the cause |
 | Closes when | the fix is merged **and** a release of the channel above carries it |
 
 ```mermaid

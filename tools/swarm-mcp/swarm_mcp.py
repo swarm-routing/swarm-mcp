@@ -599,6 +599,14 @@ def self_test():
         "a cap whose tail is 0 keeps no tail, not the whole text",
     )
     check(trim("abc", -5).endswith("...]\n"), "a negative cap keeps nothing")
+    nowhere = dict(env, SWARM_ROUTING_GIT="file://" + os.path.join(project, "nowhere"))
+    nowhere.pop("ORG_TOOLS_DIR")
+    nowhere["XDG_CACHE_HOME"] = os.path.join(project, "cache")
+    text_nf, err_nf = run("lock_verify", {"lock": "x.lock"}, nowhere)
+    check(
+        err_nf and "exit 2 (error)" in text_nf,
+        "org scripts that cannot be fetched are a tool error, not findings",
+    )
     bad = subprocess.run(
         [ORG_TOOL, "no-such-script"], capture_output=True, text=True, env=env, timeout=30
     )

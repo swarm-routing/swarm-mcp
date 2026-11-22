@@ -8,9 +8,12 @@ contributor usually adds or changes a tool (the design and its rules:
 
 ## Prerequisites
 
-Python 3.10 or newer (CI runs 3.13), bash, git, and for `make lint` ruff
-(the version in swarm-routing/.github `tools/versions.env`), shellcheck and
-actionlint 1.7.12. `make doctor` compares this machine's tools with CI's.
+Python 3.11 or newer (the org scripts the tools run import `tomllib`; CI
+runs 3.13), bash, git, and for `make lint` ruff (the version in
+swarm-routing/.github `tools/versions.env`), shellcheck and actionlint
+1.7.12. `make headers`, and so `make check`, also needs Docker with a
+running daemon or Go: the org's header check is a Go tool it runs in its
+image or builds. `make doctor` compares this machine's tools with CI's.
 
 ## Get the code
 

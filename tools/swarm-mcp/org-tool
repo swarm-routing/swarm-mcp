@@ -105,6 +105,8 @@ cached_checkout_locked() {
 if [ -n "${ORG_TOOLS_DIR:-}" ]; then
     dir=$ORG_TOOLS_DIR
 else
-    dir=$(cached_checkout .github "${ORG_TOOLS_REF:-main}")
+    # a checkout that cannot be had is exit 2, a tool error: exit 1 is the
+    # script's own verdict with findings
+    dir=$(cached_checkout .github "${ORG_TOOLS_REF:-main}") || exit 2
 fi
 exec python3 -I "$dir/$py" "$@"

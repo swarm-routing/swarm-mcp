@@ -1,5 +1,7 @@
 # org-sync configuration (swarm-routing/.github tools/org-sync).
 kind = "python"
+# the org scripts the tools run import tomllib (Python 3.11+); the server alone needs 3.10
+python = "3.11"
 title = "swarm-mcp"
 dual = ["tools/"]
 # CITATION.cff seed and cite badge (swarm-routing/.github#636: versioned releases). Once
