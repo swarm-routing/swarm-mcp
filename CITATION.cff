@@ -1,0 +1,23 @@
+# Citation File Format (https://citation-file-format.github.io), seeded by
+# swarm-routing/.github org-sync (`citation = true`; `citation_type` and
+# `[[references]]` in .github/org-sync.toml); the repository's own once
+# written. Commitizen keeps `version:` in step (`.cz.toml` version_files
+# "CITATION.cff:^version:"); swarm-routing/.github tools/zenodo reads the
+# concept DOI from `doi:` once the first release is archived on Zenodo.
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "swarm-mcp"
+abstract: >-
+  swarm-mcp, the swarm-routing org's local, read-only MCP server over its
+  scripts (stdio, Python stdlib): fidelity sheets, golden-rule checks, release
+  readiness, release locks. The skills plugin starts it at a pinned commit.
+type: software
+authors:
+  - family-names: Joppi
+    given-names: Daniel Henrique
+    orcid: "https://orcid.org/0009-0009-6436-8174"
+version: "0.0.0"
+# The work as a whole; tools/ also MIT OR GPL-2.0-only (LICENSING.md).
+license: GPL-2.0-only
+repository-code: "https://github.com/swarm-routing/swarm-mcp"
+url: "https://github.com/swarm-routing/swarm-mcp"

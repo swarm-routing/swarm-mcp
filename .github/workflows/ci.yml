@@ -1,0 +1,58 @@
+# Copyright (c) 2026 Daniel Joppi (https://github.com/swarm-routing)
+# SPDX-License-Identifier: GPL-2.0-only
+name: CI
+
+# tools/ passes ruff and the server's self-test runs under coverage (report-only,
+# swarm-routing/.github#35); org-tool passes shellcheck and the workflows pass
+# actionlint. Licence headers and the org-sync drift check run in their own
+# workflows (licence.yml, org-sync.yml).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:  # the merge queue runs the required checks on each group (swarm-routing/.github#130)
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request cancels this run (swarm-routing/.github#505):
+# runners are shared by the whole org. Pushes, merge groups and dispatches run to the end.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Harden the runner (audit egress)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        timeout-minutes: 2  # its download and start take seconds (swarm-routing/.github#164)
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: actionlint, shellcheck on org-tool
+        timeout-minutes: 5  # the two downloads (org CONTRIBUTING invariant 5)
+        env:
+          # actionlint 1.7.12's own release, checked against its sha256 (the release's
+          # checksums.txt): actionlint-py has no wheel, and its sdist runs a setup script
+          ACTIONLINT_URL: https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          # the hash-pinned lock of tools/requirements/ci.in (swarm-routing/.github#716)
+          pip install --quiet --only-binary :all: --require-hashes -r tools/requirements/ci.txt
+          curl --proto =https --tlsv1.2 -fsSL --retry 3 -o "$RUNNER_TEMP/actionlint.tgz" "$ACTIONLINT_URL"
+          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/actionlint.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/actionlint.tgz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" .github/workflows/*.yml
+          shellcheck tools/swarm-mcp/org-tool
+
+  python:
+    uses: swarm-routing/.github/.github/workflows/reusable-python-ci.yml@c9358e3eedf318ba57e37a9bb3c51d1057d657ac # main@2026-11-22
+    with:
+      paths: tools
+      tests: tools/swarm-mcp/test_swarm_mcp.py
+      source: tools

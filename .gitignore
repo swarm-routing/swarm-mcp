@@ -1,0 +1,3 @@
+# build and test output
+dist/
+__pycache__/
