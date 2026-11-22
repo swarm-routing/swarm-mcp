@@ -47,7 +47,7 @@ import sys
 import tempfile
 
 NAME = "swarm-mcp"
-VERSION = "0.0.0"  # Commitizen moves it with .cz.toml and CITATION.cff on a release
+VERSION = "0.1.0"  # Commitizen moves it with .cz.toml and CITATION.cff on a release
 HERE = os.path.dirname(os.path.abspath(__file__))
 ORG_TOOL = os.path.join(HERE, "org-tool")
 MODERN = ["2026-07-28"]
