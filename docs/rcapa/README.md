@@ -19,7 +19,7 @@ This page is the project's flow and its index.
 | | |
 |---|---|
 | Published as | Nothing released yet (`docs/roadmap.md`: v0.1.0 first). One consumer pins it: the swarm-routing/skills plugin runs the commit its `swarm-mcp.lock` names. From the first release on, a regression in a tagged release the plugin pins gets an RCAPA here; a defect in a script a tool runs lives with that script (swarm-routing/.github `tools/`, which takes none) |
-| ID prefix | `MCP-NNN` (proposed; its row in CONTRIBUTING "RCAPA"'s prefix table is added in swarm-routing/.github) |
+| ID prefix | `MCP-NNN` (proposed, not yet confirmed: its row in CONTRIBUTING "RCAPA"'s prefix table in swarm-routing/.github is pending) |
 | Ticket | an issue in swarm-routing/swarm-mcp, form *Regression in a release (RCAPA)*, title `[rcapa] MCP-NNN <short description>`, labels `rcapa` and `bug` |
 | Verified by | the failing call through the plugin at the new pin against the old one (a `tools/call` request on stdin, the reply on stdout), and `make check` here |
 | Corrective action | the fix with a self-test case that fails before it, a release cut on the maintainer's request (`release.yml`), and the pin moved to it in swarm-routing/skills |
