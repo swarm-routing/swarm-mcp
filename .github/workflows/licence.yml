@@ -1,0 +1,20 @@
+# Copyright (c) 2026 Daniel Joppi (https://github.com/swarm-routing)
+# SPDX-License-Identifier: GPL-2.0-only
+name: Licence
+
+# tools/ is MIT OR GPL-2.0-only, everything else GPL-2.0-only (LICENSING.md).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:  # the merge queue runs the required checks on each group (swarm-routing/.github#130)
+
+permissions:
+  contents: read
+
+jobs:
+  headers:
+    uses: swarm-routing/.github/.github/workflows/reusable-licence-check.yml@c9358e3eedf318ba57e37a9bb3c51d1057d657ac # main@2026-11-22
+    with:
+      dual-roots: tools/
+      core-roots: ''

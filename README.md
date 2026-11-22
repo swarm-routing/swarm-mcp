@@ -1,1 +1,85 @@
+# swarm-mcp
 
+<!-- org-sync:begin badges -->
+| Group | Badges |
+| --- | --- |
+| Build | [![CI](https://github.com/swarm-routing/swarm-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/swarm-routing/swarm-mcp/actions/workflows/ci.yml) |
+| Release | [![Release](https://img.shields.io/github/v/release/swarm-routing/swarm-mcp?sort=semver&cacheSeconds=1800)](https://github.com/swarm-routing/swarm-mcp/releases) [![Cite](https://img.shields.io/badge/cite-CITATION.cff-blue)](CITATION.cff) [![Licence: GPL-2.0-only, tools/ MIT OR GPL-2.0-only](https://img.shields.io/badge/licence-GPL--2.0--only%2C%20tools%2F%20MIT%20OR%20GPL--2.0--only-blue)](LICENSING.md) |
+| Trust | [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/swarm-routing/swarm-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/swarm-routing/swarm-mcp) |
+| Stack | [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue?logo=python)](AGENTS.md) |
+| Community & docs | [![Open RCAPA](https://img.shields.io/github/issues/swarm-routing/swarm-mcp/rcapa?label=open%20RCAPA&color=blue)](https://github.com/swarm-routing/swarm-mcp/blob/main/docs/rcapa/README.md) [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org) |
+<!-- org-sync:end badges -->
+
+`swarm-mcp`, the swarm-routing org's **MCP server**: a local, read-only
+[Model Context Protocol](https://modelcontextprotocol.io) server (stdio,
+Python stdlib) whose tools each run one read-only command of a
+`swarm-routing/.github` script (a fidelity sheet's checks, the golden-rule
+checks on a diff, a release's readiness and aftercare, a release lock) and
+return the script's own summary, capped. The Claude Code plugin
+`swarm-routing` from [swarm-routing/skills](https://github.com/swarm-routing/skills)
+starts it at the commit it pins; any other MCP client runs it the same way.
+Skills hold the procedures, this repository the server, each versioned and
+released on its own.
+
+## Tools
+
+| Tool | Runs (a swarm-routing/.github script) |
+|------|------|
+| `fidelity_check` | `fidelity.py check FILE` |
+| `fidelity_row` | `fidelity.py row FILE [--protocol NAME]` |
+| `fidelity_verify` | `fidelity.py verify FILE --text KEY=PATH ...` |
+| `protocol_review` | `check_invariants.py [REPO] --base REF [--pr-body FILE]` |
+| `release_ready` | `release_check.py ready REPO_DIR [--repo O/N] [--version X.Y.Z]` |
+| `release_after` | `release_check.py after O/N --tag vX.Y.Z [--repos A,B]` |
+| `lock_verify` | `release_lock.py verify LOCK` |
+
+Every tool is read-only and returns the script's summary, capped; exit 1
+means findings. The design, its rules and what is out of scope:
+[ADR-0002](docs/adr/0002-swarm-mcp-is-a-local-read-only-mcp-server.md).
+
+## Use
+
+In Claude Code, enable the `swarm-routing` plugin
+([swarm-routing/skills](https://github.com/swarm-routing/skills)): it starts
+this server at the commit its `swarm-mcp.lock` pins. In any other MCP
+client, register the command
+
+```bash
+python3 -I /path/to/swarm-mcp/tools/swarm-mcp/swarm_mcp.py
+```
+
+as a stdio server, with `ORG_TOOLS_DIR` set to a checkout of
+swarm-routing/.github if you have one (otherwise the server fetches a
+snapshot of its `main`).
+
+<!-- org-sync:begin develop -->
+## Develop
+
+New here? [docs/development.md](docs/development.md) is the developer guide:
+the tools to install, how to get the code and its dependencies, how to
+build, test, run and lint it, the Docker images, what CI checks and how to
+read a red run. How changes are proposed, reviewed and released is the org's
+[CONTRIBUTING.md](https://github.com/swarm-routing/.github/blob/main/CONTRIBUTING.md).
+Whether a regression here gets an RCAPA (root cause analysis with corrective
+and preventive actions), and how: [docs/rcapa/README.md](docs/rcapa/README.md).
+<!-- org-sync:end develop -->
+
+<!-- org-sync:begin citing -->
+## Releases & citing
+
+Versions follow [SemVer](https://semver.org). Each release is listed under [Releases](https://github.com/swarm-routing/swarm-mcp/releases), built by the org's release workflow and archived on [Zenodo](https://zenodo.org) with its own DOI.
+
+To cite this repository, use the “Cite this repository” button (from [CITATION.cff](CITATION.cff)). It has no DOI yet: the concept DOI appears here and in the badge above once Zenodo archives its first release.
+
+Using it in your work? Contributions are welcome, and citing it helps just as much.
+<!-- org-sync:end citing -->
+
+## Contributing
+
+Contributions from forks are welcome: see
+[Outside contributions](https://github.com/swarm-routing/.github/blob/main/CONTRIBUTING.md#outside-contributions)
+(sign off every commit with `git commit -s`).
+
+## Licence
+
+See [LICENSING.md](LICENSING.md).
