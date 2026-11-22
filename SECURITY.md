@@ -39,6 +39,15 @@ best-effort basis: expect an acknowledgement within a few days, not an SLA.
 
 ## Verifying what it ships
 
-Nothing is released yet. The Claude Code plugin starts this server at the
-commit `swarm-routing/skills` pins in `swarm-mcp.lock`; compare `git log`
-of this repository up to that commit before moving the pin.
+- **A release asset.** Each release (from v0.1.0) carries
+  `swarm-mcp-X.Y.Z.tar.gz`, `SHA256SUMS`, a CycloneDX SBOM and signed SLSA
+  build provenance; check a download with `sha256sum -c SHA256SUMS
+  --ignore-missing` and `gh attestation verify <asset> --repo
+  swarm-routing/swarm-mcp --signer-workflow
+  swarm-routing/.github/.github/workflows/reusable-release.yml` (the
+  release notes give every command, offline included).
+- **What your sessions run.** The Claude Code plugin starts this server at
+  the commit `swarm-routing/skills` pins in `swarm-mcp.lock`, with the
+  release tag that names it; check that the tag's commit
+  (`git rev-parse vX.Y.Z^{commit}`) is the pinned one, and compare `git log`
+  of this repository between two commits before moving the pin.

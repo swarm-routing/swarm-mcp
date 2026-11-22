@@ -7,7 +7,7 @@
 | Release | [![Release](https://img.shields.io/github/v/release/swarm-routing/swarm-mcp?sort=semver&cacheSeconds=1800)](https://github.com/swarm-routing/swarm-mcp/releases) [![Cite](https://img.shields.io/badge/cite-CITATION.cff-blue)](CITATION.cff) [![Licence: GPL-2.0-only, tools/ MIT OR GPL-2.0-only](https://img.shields.io/badge/licence-GPL--2.0--only%2C%20tools%2F%20MIT%20OR%20GPL--2.0--only-blue)](LICENSING.md) |
 | Trust | [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/swarm-routing/swarm-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/swarm-routing/swarm-mcp) |
 | Stack | [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](AGENTS.md) |
-| Community & docs | [![Open RCAPA](https://img.shields.io/github/issues/swarm-routing/swarm-mcp/rcapa?label=open%20RCAPA&color=blue)](https://github.com/swarm-routing/swarm-mcp/blob/main/docs/rcapa/README.md) [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org) |
+| Community & docs | [![Colony Arena: swarm-mcp](https://img.shields.io/badge/Colony%20Arena-project%20page-orange)](https://swarm-routing.github.io/projects/swarm-mcp/) [![Open RCAPA](https://img.shields.io/github/issues/swarm-routing/swarm-mcp/rcapa?label=open%20RCAPA&color=blue)](https://github.com/swarm-routing/swarm-mcp/blob/main/docs/rcapa/README.md) [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow)](https://www.conventionalcommits.org) |
 <!-- org-sync:end badges -->
 
 `swarm-mcp`, the swarm-routing org's **MCP server**: a local, read-only
