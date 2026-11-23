@@ -154,6 +154,17 @@ is fixed for a server version). A message the server cannot handle is
 `server/discover`, `ping`, `tools/list`, `tools/call`. `tools/list` is in a
 fixed order, each tool annotated `readOnlyHint: true`.
 
+Cancellation (MCP specification, "Cancellation"; swarm-routing/swarm-mcp#2):
+the server serves **one message at a time, in order**: a request that
+arrives while a tool runs waits its turn (a queue, not concurrency, so two
+scripts never run at once and replies keep the requests' order). A reader
+thread keeps reading stdin meanwhile, and the running tool looks for its
+cancellation every 0.1 s: a `notifications/cancelled` whose `requestId` is
+the running `tools/call` kills its process group and sends no response for
+it; one for a request still queued drops that request, which never runs; one
+for anything else is ignored, as any notification. The per-call timeout
+(`SWARM_MCP_TIMEOUT`) and the output cap are unchanged.
+
 ### Packaging and running it
 
 - **Claude Code**: the `swarm-routing` plugin (swarm-routing/skills) starts

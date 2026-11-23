@@ -20,7 +20,9 @@ when a person runs it (git, gh, public HTTPS reads).
 Transport: JSON-RPC 2.0 over stdio, one message per line. Dual-era: a modern
 request (protocol 2026-07-28) carries its version in
 `params._meta["io.modelcontextprotocol/protocolVersion"]`; a legacy client
-opens with `initialize` (2025-11-25, 2025-06-18, 2025-03-26).
+opens with `initialize` (2025-11-25, 2025-06-18, 2025-03-26). One message
+is served at a time, in order; a `notifications/cancelled` for the running
+tools/call kills it and drops its response (docs/adr/0002, "Protocol").
 
   python3 -I tools/swarm-mcp/swarm_mcp.py            serve on stdin/stdout
   python3 -I tools/swarm-mcp/swarm_mcp.py --list     print the tools, one per line
@@ -38,13 +40,18 @@ Stdlib only.
 
 from __future__ import annotations
 
+import collections
 import json
 import os
+import queue
 import re
+import selectors
 import signal
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 
 NAME = "swarm-mcp"
 VERSION = "0.1.0"  # Commitizen moves it with .cz.toml and CITATION.cff on a release
@@ -247,8 +254,12 @@ def trim(text, cap):
     )
 
 
-def run(name, args, env=None):
-    """(text, is_error) for one tool call."""
+POLL_S = 0.1  # how often a running tool looks for its cancellation
+
+
+def run(name, args, env=None, cancelled=None):
+    """(text, is_error) for one tool call; None when `cancelled()` turned true
+    while it ran (its process group killed, nothing to answer)."""
     _d, schema, script, build = TOOLS[name]
     problems = validate(schema, args)
     if problems:
@@ -272,12 +283,33 @@ def run(name, args, env=None):
         )
     except OSError as e:
         return f"{name}: could not start {cmd[0]}: {e}", True
-    try:
-        out, err = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGKILL)
-        out, err = proc.communicate()
-        return f"{name}: timed out after {timeout:g} s\n{trim(err, cap // 4)}".rstrip(), True
+    deadline = time.monotonic() + timeout
+    while True:
+        # communicate() keeps what it read when it times out, so it is retried
+        # in slices to look for a cancellation in between
+        left = deadline - time.monotonic()
+        try:
+            out, err = proc.communicate(timeout=max(min(POLL_S, left), 0))
+            break
+        except subprocess.TimeoutExpired:
+            try:
+                stop = cancelled is not None and cancelled()
+            except BaseException:
+                # never leave the child running without its timeout's owner
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.communicate()
+                raise
+            if stop:
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.communicate()
+                return None
+            if left <= POLL_S:
+                os.killpg(proc.pid, signal.SIGKILL)
+                out, err = proc.communicate()
+                return (
+                    f"{name}: timed out after {timeout:g} s\n{trim(err, cap // 4)}".rstrip(),
+                    True,
+                )
     code = proc.returncode
     verdict = {0: "ok", 1: "findings"}.get(code, "error")
     text = f"{name}: exit {code} ({verdict})\n{trim(out, cap)}".rstrip()
@@ -346,7 +378,11 @@ def handle(msg, state):
         name = params.get("name")
         if not isinstance(name, str) or name not in TOOLS:
             return _err(mid, -32602, f"Unknown tool: {name}")
-        text, is_error = run(name, params.get("arguments") or {})
+        watch = state.get("cancelled")
+        done = run(name, params.get("arguments") or {}, cancelled=watch and (lambda: watch(mid)))
+        if done is None:
+            return None  # cancelled: the client wants no response (MCP "Cancellation")
+        text, is_error = done
         result = {"content": [{"type": "text", "text": text}], "isError": is_error}
     else:
         return _err(mid, -32601, f"Method not found: {method}")
@@ -357,14 +393,79 @@ def handle(msg, state):
     return {"jsonrpc": "2.0", "id": mid, "result": result}
 
 
+def _cancels(line):
+    """The request id a `notifications/cancelled` line cancels, else None."""
+    try:
+        msg = json.loads(line)
+    except (ValueError, RecursionError):
+        return None
+    if (
+        not isinstance(msg, dict)
+        or msg.get("jsonrpc") != "2.0"
+        or msg.get("method") != "notifications/cancelled"
+        or "id" in msg
+    ):
+        return None
+    params = msg.get("params")
+    rid = params.get("requestId") if isinstance(params, dict) else None
+    return rid if isinstance(rid, (int, str)) and not isinstance(rid, bool) else None
+
+
+def _id_of(line):
+    try:
+        msg = json.loads(line)
+    except (ValueError, RecursionError):
+        return None
+    return msg.get("id") if isinstance(msg, dict) else None
+
+
 def serve(inp=sys.stdin, out=sys.stdout):
-    state = {}
-    for line in inp:
+    """Serve one message at a time, in order. A reader thread keeps reading
+    stdin while a tool runs, so a `notifications/cancelled` for the running
+    request kills its process group and drops its response, and one for a
+    request still queued drops that request; every other message waits its
+    turn (docs/adr/0002, "Protocol")."""
+    lines = queue.Queue()
+
+    def reader():
+        for line in inp:
+            lines.put(line)
+        lines.put(None)  # end of input
+
+    threading.Thread(target=reader, daemon=True).start()
+    pending = collections.deque()  # read while a tool ran, not yet served
+
+    def cancelled(mid):
+        hit = False
+        while True:
+            try:
+                line = lines.get_nowait()
+            except queue.Empty:
+                return hit
+            rid = None if line is None else _cancels(line)
+            if rid is not None and mid is not None and rid == mid:
+                hit = True
+            elif rid is not None:
+                for p in list(pending):
+                    if p is not None and _id_of(p) == rid and _cancels(p) is None:
+                        pending.remove(p)
+                pending.append(line)
+            else:
+                pending.append(line)
+
+    state = {"cancelled": cancelled}
+    while True:
+        # what arrived while the last message was served, its cancellations
+        # applied, before the next one starts (a fast tool never polls)
+        cancelled(None)
+        line = pending.popleft() if pending else lines.get()
+        if line is None:
+            break
         if not line.strip():
             continue
         try:
             msg = json.loads(line)
-        except ValueError:
+        except (ValueError, RecursionError):  # too deep to parse is still bad JSON
             reply = _err(None, -32700, "Parse error")
         else:
             try:
@@ -381,10 +482,13 @@ def serve(inp=sys.stdin, out=sys.stdout):
 # --- self-test -----------------------------------------------------------------------
 
 # One fake for every org script: it prints its argv, and its arguments steer it.
-FAKE = """import json, sys, time
+FAKE = """import json, os, sys, time
 a = sys.argv[1:]
 print("ARGV " + json.dumps(a))
 if any("sleep" in x for x in a):
+    if os.environ.get("SWARM_MCP_FAKE_PID"):
+        with open(os.environ["SWARM_MCP_FAKE_PID"], "w") as f:
+            f.write(str(os.getpid()))
     time.sleep(30)
 if any("big" in x for x in a):
     print("x" * 50000 + " TAIL")
@@ -392,6 +496,99 @@ if any("warn" in x for x in a):
     print("a warning", file=sys.stderr)
 sys.exit(2 if any("fail2" in x for x in a) else 1 if any("fail1" in x for x in a) else 0)
 """
+
+
+def cancel_test(env, project, call, req, check):
+    """A tools/call on the fake's sleep, then notifications/cancelled for its id
+    and a ping, on a live server: no reply for the call, its child gone, the
+    ping answered at once (well inside the 60 s timeout). A second call queued
+    behind it and cancelled before it starts is dropped, never run."""
+    pidfile = os.path.join(project, "fake.pid")
+    srv = subprocess.Popen(
+        [sys.executable, "-I", os.path.abspath(__file__)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+        env=dict(env, SWARM_MCP_TIMEOUT="60", SWARM_MCP_FAKE_PID=pidfile),
+    )
+    srv.stdin.write(call(30, "fidelity_check", {"file": "sleep.md"}) + "\n")
+    srv.stdin.flush()
+    deadline = time.monotonic() + 30
+    while not os.path.exists(pidfile) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    time.sleep(0.1)  # the pid written
+    with open(pidfile, encoding="utf-8") as f:
+        pid = int(f.read())
+    t0 = time.monotonic()
+
+    def cancel(rid):
+        p = {"requestId": rid, "reason": "self-test"}
+        return json.dumps({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": p})
+
+    # 32 is queued behind 30 and cancelled before it starts: it never runs
+    queued = call(32, "fidelity_check", {"file": "sleep.md"})
+    srv.stdin.write("\n".join([queued, cancel(32), cancel(30), req(31, "ping")]) + "\n")
+    srv.stdin.flush()
+    sel = selectors.DefaultSelector()
+    sel.register(srv.stdout, selectors.EVENT_READ)
+    first = srv.stdout.readline() if sel.select(timeout=20) else ""
+    elapsed = time.monotonic() - t0
+    gone = False
+    for _ in range(50):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            gone = True
+            break
+        time.sleep(0.1)
+    srv.stdin.close()
+    rest = srv.stdout.read()
+    srv.wait(timeout=30)
+    ids = [json.loads(x).get("id") for x in (first + rest).splitlines() if x.strip()]
+    check(
+        ids == [31] and elapsed < 5,
+        f"notifications/cancelled: no reply for the cancelled call, the next request answered "
+        f"at once ({ids}, {elapsed:.1f} s)",
+    )
+    check(gone, "notifications/cancelled: the cancelled call's child is gone")
+    # A fast tool never polls: what arrived meanwhile is applied before the next
+    # starts. 41's cancellation has no jsonrpc, so 41 runs (to its 3 s timeout)
+    # and the message itself is answered -32600;
+    # 44 is cancelled while queued and never runs; a line nested too deep to
+    # parse is -32700, and every queued line is still read.
+    deep = "[" * 200000 + "]" * 200000
+    bad = json.dumps({"method": "notifications/cancelled", "params": {"requestId": 41}})
+    fast = [
+        call(40, "fidelity_check", {"file": "docs/fidelity.md"}),
+        call(41, "fidelity_check", {"file": "sleep.md"}),
+        bad,
+        deep,
+        call(44, "fidelity_check", {"file": "sleep.md"}),
+        cancel(44),
+        req(42, "ping"),
+    ]
+    t0 = time.monotonic()
+    p = subprocess.run(
+        [sys.executable, "-I", os.path.abspath(__file__)],
+        input="\n".join(fast) + "\n",
+        capture_output=True,
+        text=True,
+        env=dict(env, SWARM_MCP_TIMEOUT="3"),
+        timeout=60,
+    )
+    elapsed = time.monotonic() - t0
+    got = [json.loads(x) for x in p.stdout.splitlines() if x.strip()]
+    ids = [r.get("id") for r in got]
+    timed = [r for r in got if r.get("id") == 41]
+    check(
+        ids == [40, 41, None, None, 42]
+        and "timed out" in timed[0]["result"]["content"][0]["text"]
+        and got[2]["error"]["code"] == -32600  # no jsonrpc: an invalid request, as before
+        and got[3]["error"]["code"] == -32700
+        and elapsed < 20,
+        f"cancellations read before the next request starts; one without jsonrpc is "
+        f"ignored; a too-deep line is -32700 ({ids}, {elapsed:.1f} s)",
+    )
 
 
 def self_test():
@@ -599,6 +796,7 @@ def self_test():
         "a cap whose tail is 0 keeps no tail, not the whole text",
     )
     check(trim("abc", -5).endswith("...]\n"), "a negative cap keeps nothing")
+    cancel_test(env, project, call, req, check)
     nowhere = dict(env, SWARM_ROUTING_GIT="file://" + os.path.join(project, "nowhere"))
     nowhere.pop("ORG_TOOLS_DIR")
     nowhere["XDG_CACHE_HOME"] = os.path.join(project, "cache")
