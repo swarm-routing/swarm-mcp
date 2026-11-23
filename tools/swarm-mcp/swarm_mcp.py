@@ -292,7 +292,14 @@ def run(name, args, env=None, cancelled=None):
             out, err = proc.communicate(timeout=max(min(POLL_S, left), 0))
             break
         except subprocess.TimeoutExpired:
-            if cancelled is not None and cancelled():
+            try:
+                stop = cancelled is not None and cancelled()
+            except BaseException:
+                # never leave the child running without its timeout's owner
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.communicate()
+                raise
+            if stop:
                 os.killpg(proc.pid, signal.SIGKILL)
                 proc.communicate()
                 return None
@@ -390,9 +397,14 @@ def _cancels(line):
     """The request id a `notifications/cancelled` line cancels, else None."""
     try:
         msg = json.loads(line)
-    except ValueError:
+    except (ValueError, RecursionError):
         return None
-    if not isinstance(msg, dict) or msg.get("method") != "notifications/cancelled" or "id" in msg:
+    if (
+        not isinstance(msg, dict)
+        or msg.get("jsonrpc") != "2.0"
+        or msg.get("method") != "notifications/cancelled"
+        or "id" in msg
+    ):
         return None
     params = msg.get("params")
     rid = params.get("requestId") if isinstance(params, dict) else None
@@ -402,7 +414,7 @@ def _cancels(line):
 def _id_of(line):
     try:
         msg = json.loads(line)
-    except ValueError:
+    except (ValueError, RecursionError):
         return None
     return msg.get("id") if isinstance(msg, dict) else None
 
@@ -431,7 +443,7 @@ def serve(inp=sys.stdin, out=sys.stdout):
             except queue.Empty:
                 return hit
             rid = None if line is None else _cancels(line)
-            if rid is not None and rid == mid:
+            if rid is not None and mid is not None and rid == mid:
                 hit = True
             elif rid is not None:
                 for p in list(pending):
@@ -443,6 +455,9 @@ def serve(inp=sys.stdin, out=sys.stdout):
 
     state = {"cancelled": cancelled}
     while True:
+        # what arrived while the last message was served, its cancellations
+        # applied, before the next one starts (a fast tool never polls)
+        cancelled(None)
         line = pending.popleft() if pending else lines.get()
         if line is None:
             break
@@ -450,7 +465,7 @@ def serve(inp=sys.stdin, out=sys.stdout):
             continue
         try:
             msg = json.loads(line)
-        except ValueError:
+        except (ValueError, RecursionError):  # too deep to parse is still bad JSON
             reply = _err(None, -32700, "Parse error")
         else:
             try:
@@ -536,6 +551,44 @@ def cancel_test(env, project, call, req, check):
         f"at once ({ids}, {elapsed:.1f} s)",
     )
     check(gone, "notifications/cancelled: the cancelled call's child is gone")
+    # A fast tool never polls: what arrived meanwhile is applied before the next
+    # starts. 41's cancellation has no jsonrpc, so 41 runs (to its 3 s timeout)
+    # and the message itself is answered -32600;
+    # 44 is cancelled while queued and never runs; a line nested too deep to
+    # parse is -32700, and every queued line is still read.
+    deep = "[" * 200000 + "]" * 200000
+    bad = json.dumps({"method": "notifications/cancelled", "params": {"requestId": 41}})
+    fast = [
+        call(40, "fidelity_check", {"file": "docs/fidelity.md"}),
+        call(41, "fidelity_check", {"file": "sleep.md"}),
+        bad,
+        deep,
+        call(44, "fidelity_check", {"file": "sleep.md"}),
+        cancel(44),
+        req(42, "ping"),
+    ]
+    t0 = time.monotonic()
+    p = subprocess.run(
+        [sys.executable, "-I", os.path.abspath(__file__)],
+        input="\n".join(fast) + "\n",
+        capture_output=True,
+        text=True,
+        env=dict(env, SWARM_MCP_TIMEOUT="3"),
+        timeout=60,
+    )
+    elapsed = time.monotonic() - t0
+    got = [json.loads(x) for x in p.stdout.splitlines() if x.strip()]
+    ids = [r.get("id") for r in got]
+    timed = [r for r in got if r.get("id") == 41]
+    check(
+        ids == [40, 41, None, None, 42]
+        and "timed out" in timed[0]["result"]["content"][0]["text"]
+        and got[2]["error"]["code"] == -32600  # no jsonrpc: an invalid request, as before
+        and got[3]["error"]["code"] == -32700
+        and elapsed < 20,
+        f"cancellations read before the next request starts; one without jsonrpc is "
+        f"ignored; a too-deep line is -32700 ({ids}, {elapsed:.1f} s)",
+    )
 
 
 def self_test():
