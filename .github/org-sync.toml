@@ -1,5 +1,7 @@
 # org-sync configuration (swarm-routing/.github tools/org-sync).
 kind = "python"
+# bestpractices.dev project (OpenSSF Best Practices badge; id read from the site's public JSON, swarm-routing/.github#765)
+bestpractices_project = "17076"
 # the org scripts the tools run import tomllib (Python 3.11+); the server alone needs 3.10
 python = "3.11"
 title = "swarm-mcp"
