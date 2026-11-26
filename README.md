@@ -53,6 +53,40 @@ as a stdio server, with `ORG_TOOLS_DIR` set to a checkout of
 swarm-routing/.github if you have one (otherwise the server fetches a
 snapshot of the commit this repository's `.github/org-sync.lock` pins).
 
+## Security model
+
+swarm-mcp serves stdio only. The MCP client starts it as a child process
+for one user, and it runs with that user's permissions. Nothing listens on
+a network, so there is no caller to authenticate and no traffic to
+rate-limit. Whoever can start the server can already run the scripts it
+wraps. The limits that do apply
+([ADR-0002](docs/adr/0002-swarm-mcp-is-a-local-read-only-mcp-server.md)):
+
+- **Read-only tools.** Each tool maps to one read-only command of a
+  `swarm-routing/.github` script, from a fixed table. None writes,
+  dispatches, comments or bumps a lock.
+- **Arguments are data.** Every tool's schema is closed: an unknown argument
+  is refused. Every value must be a non-empty string with no NUL byte and no
+  leading `-`, so no option reaches a script through an argument. The
+  patterned values (a version, a tag, a repository, a ref, a `KEY=PATH`)
+  must match their pattern.
+- **No shell.** The command is an argv list, run in its own process group
+  with stdin closed.
+- **One call at a time.** Messages are served in order, one at a time.
+- **Bounded time.** A call is killed (its whole process group) after
+  `SWARM_MCP_TIMEOUT` seconds, 300 by default, and returned as a tool error.
+  A `notifications/cancelled` for the running call kills it at once and
+  drops its response (#16).
+- **Bounded output.** A result is the script's summary trimmed to
+  `SWARM_MCP_MAX_CHARS` characters, 6000 by default, with a quarter of that
+  for stderr. Exit 1 means findings; any other failure is a tool error.
+- **Pinned scripts.** The scripts run at the commit this repository's
+  `.github/org-sync.lock` pins, never `.github` `main` (#39). A lock with no
+  commit is a tool error.
+
+The server collects and sends nothing: [PRIVACY.md](PRIVACY.md). Reporting
+a vulnerability: [SECURITY.md](SECURITY.md).
+
 <!-- org-sync:begin develop -->
 ## Develop
 

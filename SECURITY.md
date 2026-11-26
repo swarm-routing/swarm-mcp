@@ -16,7 +16,10 @@ commands with an argument list, never a shell; it opens no connection, reads
 no token and writes no file of its own. A script reaches the network only as
 it does when a person runs it: `tools/swarm-mcp/org-tool` fetches
 `swarm-routing/.github` (public HTTPS) unless `ORG_TOOLS_DIR` names a
-checkout, and some scripts read GitHub with `gh` as the user.
+checkout, and some scripts read GitHub with `gh` as the user. What it
+collects, stores and sends (nothing) and what each script reaches:
+[PRIVACY.md](PRIVACY.md); the limits it does have: the README's
+[Security model](README.md#security-model).
 
 ## Known, by-design limitations (out of scope)
 
