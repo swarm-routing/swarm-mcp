@@ -1,0 +1,12 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.swarm-routing/swarm-mcp",
+  "title": "swarm-mcp",
+  "description": "Read-only MCP server over the swarm-routing org's scripts: fidelity, invariants, releases, locks",
+  "repository": {
+    "url": "https://github.com/swarm-routing/swarm-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://swarm-routing.github.io/projects/swarm-mcp/",
+  "version": "0.2.0"
+}
