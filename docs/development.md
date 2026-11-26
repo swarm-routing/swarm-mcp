@@ -30,7 +30,8 @@ snapshot; the self-test needs neither.
 
 None to install: the server uses the standard library only. At run time
 `org-tool` reads the org scripts from `ORG_TOOLS_DIR`, else a snapshot of
-swarm-routing/.github at `ORG_TOOLS_REF` (default `main`) cached under
+swarm-routing/.github at `ORG_TOOLS_REF` (default: the commit
+`.github/org-sync.lock` pins; docs/adr/0002) cached under
 `${XDG_CACHE_HOME:-~/.cache}/swarm-routing/checkouts/`.
 
 ## Build

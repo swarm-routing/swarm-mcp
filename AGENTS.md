@@ -28,7 +28,7 @@ org site: https://swarm-routing.github.io/projects/swarm-mcp/.** The design is [
 tools/swarm-mcp/swarm_mcp.py       the server: JSON-RPC 2.0 over stdio (dual-era MCP), the tool table, argument checks,
                                    the cap, --list, --self-test (stdlib only; VERSION is .cz.toml's) — MIT OR GPL-2.0-only
 tools/swarm-mcp/org-tool           finds and runs the four swarm-routing/.github scripts the tools use (ORG_TOOLS_DIR, else a
-                                   cached snapshot at ORG_TOOLS_REF, default main; the skill wrappers' cached-checkout block)
+                                   cached snapshot at ORG_TOOLS_REF, default .github/org-sync.lock's commit; the skill wrappers' cached-checkout block)
 tools/swarm-mcp/test_swarm_mcp.py  the self-test as a plain script, which CI runs under coverage
 tools/requirements/                ci.in / ci.txt: shellcheck for the lint job, hash-pinned
 docs/adr/0002-…                    the design: the tools, their four rules, the protocol, the packaging, the move
