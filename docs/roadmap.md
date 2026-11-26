@@ -19,6 +19,7 @@ the commit the plugin's pin should name once one exists.
 | Release | Theme | Exit criteria |
 |---|---|---|
 | v0.1.0 | first tagged release: the seven read-only tools moved from swarm-routing/skills | `release.yml` on `reusable-release.yml`; `.cz.toml`, `VERSION` in `swarm_mcp.py` and `CITATION.cff` at one version (the self-test checks the first two); `make check` and CI green on `main`; the skills plugin starts the server from its pin; a dry run green; no open issue labelled `release:v0.1.0`; the maintainer asks for it |
+| v0.2.0 | `notifications/cancelled` while a tool runs (#16); the no-flock cache-lock recovery (#17); the org scripts at the commit `.github/org-sync.lock` pins, not `.github` `main` (#39, #40) | the same release machinery green; `make check` and CI green on `main`; a dry run green with Commitizen computing 0.2.0; no open issue labelled `release:v0.2.0`; the maintainer asks for it (2026-11-26, in the swarm-routing coordinator session) |
 
 ## Non-goals
 
