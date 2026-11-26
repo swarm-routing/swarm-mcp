@@ -1,0 +1,70 @@
+# Copyright (c) 2026 Daniel Joppi (https://github.com/swarm-routing)
+# SPDX-License-Identifier: GPL-2.0-only
+name: MCP Registry
+
+# Publishes server.json to the official MCP Registry
+# (https://registry.modelcontextprotocol.io) under io.github.swarm-routing/*,
+# authenticated by GitHub OIDC: the registry grants io.github.<repository_owner>/*
+# from the workflow's token, so no stored token exists (maintainer decision
+# 2026-11-26, #51; swarm-routing/.github#971). It runs when a release is
+# published, and by hand (workflow_dispatch) to list the current release. It
+# publishes only when server.json's version is the latest v* tag, so never an
+# unreleased version.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-registry
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write  # the OIDC token mcp-publisher exchanges (login github-oidc)
+    steps:
+      - name: Harden the runner (audit egress)
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        timeout-minutes: 2  # its download and start take seconds (swarm-routing/.github#164)
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: server.json's version is the latest release
+        timeout-minutes: 2
+        run: |
+          version=$(python3 -c 'import json; print(json.load(open("server.json"))["version"])')
+          latest=$(git ls-remote --tags --refs "https://github.com/${GITHUB_REPOSITORY}" 'v*' \
+            | sed 's#.*refs/tags/##' | sort -V | tail -n 1)
+          echo "server.json $version, latest tag $latest"
+          if [ "v$version" != "$latest" ]; then
+            echo "::error::server.json is $version, the latest release is $latest: publish only a released version"
+            exit 1
+          fi
+      - name: mcp-publisher
+        timeout-minutes: 3  # one download (org CONTRIBUTING invariant 5)
+        env:
+          # mcp-publisher v1.8.1 (the version the registry's GitHub Actions docs pin,
+          # modelcontextprotocol/registry 0c74fa6), checked against its sha256 from that
+          # release's registry_1.8.1_checksums.txt
+          MCP_PUBLISHER_URL: https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+        run: |
+          curl --proto =https --tlsv1.2 -fsSL --retry 3 --retry-all-errors \
+            -o "$RUNNER_TEMP/mcp-publisher.tgz" "$MCP_PUBLISHER_URL"
+          echo "$MCP_PUBLISHER_SHA256  $RUNNER_TEMP/mcp-publisher.tgz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/mcp-publisher.tgz" -C "$RUNNER_TEMP" mcp-publisher
+      - name: Log in by GitHub OIDC
+        timeout-minutes: 2
+        run: '"$RUNNER_TEMP/mcp-publisher" login github-oidc'
+      - name: Publish server.json
+        timeout-minutes: 2
+        run: '"$RUNNER_TEMP/mcp-publisher" publish'
