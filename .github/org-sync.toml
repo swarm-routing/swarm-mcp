@@ -11,9 +11,10 @@ dual = ["tools/"]
 # swarm-routing/.github#811), so no zenodo_concept, no DOI badge.
 citation = true
 zenodo = false
-# External index badges (swarm-routing/.github#964, #967): the M8ven MCP index's
-# listing of this server, verified variant (maintainer requirement 2026-11-26).
-indexes = { m8ven-mcp = { id = "swarm-routing-swarm-mcp-kkxdjj", variant = "verified" } }
+# External index badges (swarm-routing/.github#964, #967, #969): the M8ven MCP
+# index's listing of this server, shown as its "M8ven Verified" badge by the
+# publisher verify id (maintainer requirement 2026-11-26).
+indexes = { m8ven-mcp = { id = "swarm-routing-swarm-mcp-kkxdjj", verify_id = "a770df99a2438405" } }
 posture = "the org's agent tooling: a local, read-only MCP server over the org's scripts, no simulation code"
 description = """
 `swarm-mcp`, the swarm-routing org's **MCP server**: a local, read-only
