@@ -21,7 +21,7 @@ checkout, and some scripts read GitHub with `gh` as the user.
 ## Known, by-design limitations (out of scope)
 
 - **The scripts are `swarm-routing/.github`'s.** The server runs them from a
-  snapshot of that repository's `main` (or `ORG_TOOLS_REF`, or the checkout
+  snapshot of the commit `.github/org-sync.lock` pins (or `ORG_TOOLS_REF`, or the checkout
   `ORG_TOOLS_DIR` names), so what a tool does is what that script does at
   that commit; review lands there.
 - **Local stdio only.** There is no network transport and no authentication:

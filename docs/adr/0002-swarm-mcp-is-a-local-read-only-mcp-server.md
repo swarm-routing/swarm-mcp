@@ -1,7 +1,8 @@
 # 0002. swarm-mcp is a local, read-only MCP server over the org's scripts
 
 - **Status:** accepted; moved here from swarm-routing/skills and amended
-  (2026-11-22, see "Amendment: its own repository")
+  (2026-11-22, see "Amendment: its own repository"); amended 2026-11-26 (see
+  "Amendment: the org scripts at a pinned commit", swarm-routing/swarm-mcp#39)
 - **Date:** 2026-11-22
 - **Issue:** swarm-routing/skills#185 (part of swarm-routing/.github#672,
   decisions 20 and 23)
@@ -11,6 +12,36 @@
   where it was accepted with the prototype. It keeps its number here: this
   repository's 0001 is the org's seeded "Record architecture decisions", and
   0002 is the number every existing reference to this decision already uses.
+
+## Amendment: the org scripts at a pinned commit (2026-11-26)
+
+The maintainer decided on 2026-11-26 (in the swarm-routing coordinator
+session) to pin the org scripts `org-tool` runs by commit instead of
+`swarm-routing/.github` `main` (swarm-routing/swarm-mcp#39). Until then a
+session ran whatever `.github` `main` held at the moment of the call, so the
+commit skills' `swarm-mcp.lock` names did not fix what a tool did. So:
+
+- With neither `ORG_TOOLS_DIR` nor `ORG_TOOLS_REF` set, `org-tool` fetches
+  the `swarm-routing/.github` commit this repository's own
+  `.github/org-sync.lock` pins (`commit = "<40 hex>"`, read from the file
+  beside the server, `../../.github/org-sync.lock` from `org-tool`; never
+  typed). That lock is the commit org-bot's refresh PRs already move and
+  `check / org-sync` checks, and it ships in every checkout and snapshot of
+  this repository, the one the skills launcher extracts included; so a
+  swarm-mcp commit now names both the server and the scripts its tools run.
+- A lock that cannot be read, or holds no such commit, is exit 2 (a tool
+  error), never a fallback to `main`.
+- `ORG_TOOLS_DIR` (a local checkout) and an explicit `ORG_TOOLS_REF` (any
+  branch, tag or commit) still win over the lock.
+- The `cached-checkout` block is unchanged (still byte-identical to the
+  skill wrappers'); only the lines after it choose the ref.
+
+A script fix in `.github` therefore reaches the tools when org-bot's refresh
+PR moves `org-sync.lock` here and skills moves its `swarm-mcp.lock`, not at
+once (the "Consequences" bullet on script fixes reads with that delay).
+Where the sections below say `ORG_TOOLS_REF` defaults to `main`, read: to
+the commit `.github/org-sync.lock` pins ("Where the scripts come from" says
+so in place).
 
 ## Amendment: its own repository (2026-11-22)
 
@@ -117,7 +148,8 @@ The rules every tool keeps, which a review of a new tool checks:
 wrapper uses: `ORG_TOOLS_DIR=<checkout of swarm-routing/.github>` names a
 local checkout (the sibling `../.github` when it is one); otherwise its
 `cached-checkout` block (the wrappers' own, byte for byte) fetches
-`swarm-routing/.github` at `ORG_TOOLS_REF` (default `main`) into an
+`swarm-routing/.github` at `ORG_TOOLS_REF` (default `main`; since the
+2026-11-26 amendment, the commit `.github/org-sync.lock` pins) into an
 immutable snapshot under `${XDG_CACHE_HOME:-~/.cache}/swarm-routing/checkouts/`.
 That fetch is the only network step outside the scripts, and it is the same
 one the skills make. (Before the move the server ran the skills' wrappers

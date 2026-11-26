@@ -10,7 +10,8 @@
 # copy there identical; compare it when that block changes).
 #   org-tool fidelity|check-invariants|release-check|release-lock ARGS...
 #   ORG_TOOLS_DIR  use this checkout of swarm-routing/.github instead
-#   ORG_TOOLS_REF  branch, tag or commit to fetch (default main)
+#   ORG_TOOLS_REF  branch, tag or commit to fetch (default: the commit
+#                  ../../.github/org-sync.lock pins; no such commit is exit 2)
 set -euo pipefail
 case "${1:-}" in
     fidelity) py=tools/fidelity/fidelity.py ;;
@@ -115,6 +116,17 @@ if [ -n "${ORG_TOOLS_DIR:-}" ]; then
 else
     # a checkout that cannot be had is exit 2, a tool error: exit 1 is the
     # script's own verdict with findings
-    dir=$(cached_checkout .github "${ORG_TOOLS_REF:-main}") || exit 2
+    ref=${ORG_TOOLS_REF:-}
+    if [ -z "$ref" ]; then
+        # the .github commit this repository's .github/org-sync.lock pins, read,
+        # never main: no commit there is a tool error (docs/adr/0002, amendment)
+        lock=$(dirname "${BASH_SOURCE[0]}")/../../.github/org-sync.lock
+        ref=$(sed -nE 's/^commit = "([0-9a-f]{40})"[[:space:]]*$/\1/p' "$lock" 2>/dev/null | head -n 1) || ref=
+        if [ -z "$ref" ]; then
+            echo "org-tool: no commit in $lock (set ORG_TOOLS_REF or ORG_TOOLS_DIR)" >&2
+            exit 2
+        fi
+    fi
+    dir=$(cached_checkout .github "$ref") || exit 2
 fi
 exec python3 -I "$dir/$py" "$@"

@@ -12,10 +12,10 @@ swarm-routing/.github scripts the same way.
 
 Each tool runs one read-only command of a swarm-routing/.github script through
 `org-tool` (ORG_TOOLS_DIR, else a cached snapshot of swarm-routing/.github at
-ORG_TOOLS_REF, default main) and returns the exit status and the script's
-summary, trimmed to a size cap. The server itself opens no connection, reads
-no token and writes no file; a script reaches the network only as it does
-when a person runs it (git, gh, public HTTPS reads).
+ORG_TOOLS_REF, by default the commit this repository's .github/org-sync.lock
+pins) and returns the exit status and the script's summary, trimmed to a size
+cap. The server itself opens no connection, reads no token and writes no file;
+a script reaches the network only as it does when a person runs it (git, gh, public HTTPS reads).
 
 Transport: JSON-RPC 2.0 over stdio, one message per line. Dual-era: a modern
 request (protocol 2026-07-28) carries its version in
@@ -31,7 +31,8 @@ tools/call kills it and drops its response (docs/adr/0002, "Protocol").
 Environment:
   CLAUDE_PROJECT_DIR   the directory relative paths resolve against (else the cwd)
   ORG_TOOLS_DIR        a swarm-routing/.github checkout (org-tool reads it)
-  ORG_TOOLS_REF        the branch, tag or commit org-tool fetches otherwise (default main)
+  ORG_TOOLS_REF        the branch, tag or commit org-tool fetches otherwise (default: the
+                       commit .github/org-sync.lock pins; none there is a tool error)
   SWARM_MCP_TIMEOUT    seconds per tool call (default 300)
   SWARM_MCP_MAX_CHARS  characters of stdout per result (default 6000; stderr gets a quarter)
 
@@ -498,6 +499,76 @@ sys.exit(2 if any("fail2" in x for x in a) else 1 if any("fail1" in x for x in a
 """
 
 
+def pin_test(env, project, check):
+    """org-tool with no ORG_TOOLS_DIR: the commit .github/org-sync.lock pins, an
+    explicit ORG_TOOLS_REF over it, and no lock a tool error (exit 2)."""
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+    origin = os.path.join(project, "pin-origin")
+    repo = os.path.join(origin, ".github")
+    script = os.path.join(repo, "tools", "checks", "release_lock.py")
+    os.makedirs(os.path.dirname(script))
+
+    def commit(body):
+        with open(script, "w", encoding="utf-8") as f:
+            f.write(body)
+        subprocess.run(git + ["-C", repo, "add", "-A"], check=True)
+        subprocess.run(git + ["-C", repo, "commit", "-qm", "c"], check=True)
+        return subprocess.run(
+            ["git", "-C", repo, "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+
+    subprocess.run(["git", "init", "-q", "-b", "main", repo], check=True)
+    pinned = commit('print("PINNED")\n')
+    commit('print("MAIN")\n')
+    trees = {}
+    for name, lock in (("locked", f'commit = "{pinned}"\n'), ("unlocked", None)):
+        tree = os.path.join(project, f"pin-{name}")
+        os.makedirs(os.path.join(tree, "tools", "swarm-mcp"))
+        os.makedirs(os.path.join(tree, ".github"))
+        with open(ORG_TOOL, encoding="utf-8") as src:
+            tool = os.path.join(tree, "tools", "swarm-mcp", "org-tool")
+            with open(tool, "w", encoding="utf-8") as dst:
+                dst.write(src.read())
+        os.chmod(tool, 0o755)
+        if lock:
+            with open(os.path.join(tree, ".github", "org-sync.lock"), "w", encoding="utf-8") as f:
+                f.write("# a comment\n" + lock)
+        trees[name] = tool
+    pin_env = dict(env, SWARM_ROUTING_GIT="file://" + origin)
+    pin_env.pop("ORG_TOOLS_DIR", None)
+    pin_env.pop("ORG_TOOLS_REF", None)
+    pin_env["XDG_CACHE_HOME"] = os.path.join(project, "pin-cache")
+
+    def org_tool(tool, **extra):
+        return subprocess.run(
+            [tool, "release-lock"],
+            capture_output=True,
+            text=True,
+            env=dict(pin_env, **extra),
+            timeout=60,
+            check=False,
+        )
+
+    out = org_tool(trees["locked"])
+    check(
+        out.returncode == 0 and out.stdout == "PINNED\n",
+        "org-tool runs the org scripts at the commit .github/org-sync.lock pins, not main",
+    )
+    out = org_tool(trees["locked"], ORG_TOOLS_REF="main")
+    check(
+        out.returncode == 0 and out.stdout == "MAIN\n",
+        "an explicit ORG_TOOLS_REF wins over the lock",
+    )
+    out = org_tool(trees["unlocked"])
+    check(
+        out.returncode == 2 and "no commit in" in out.stderr and not out.stdout,
+        "no .github/org-sync.lock is exit 2 (a tool error), never a fallback to main",
+    )
+
+
 def cancel_test(env, project, call, req, check):
     """A tools/call on the fake's sleep, then notifications/cancelled for its id
     and a ping, on a live server: no reply for the call, its child gone, the
@@ -797,6 +868,7 @@ def self_test():
     )
     check(trim("abc", -5).endswith("...]\n"), "a negative cap keeps nothing")
     cancel_test(env, project, call, req, check)
+    pin_test(env, project, check)
     nowhere = dict(env, SWARM_ROUTING_GIT="file://" + os.path.join(project, "nowhere"))
     nowhere.pop("ORG_TOOLS_DIR")
     nowhere["XDG_CACHE_HOME"] = os.path.join(project, "cache")
