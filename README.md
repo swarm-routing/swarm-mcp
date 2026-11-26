@@ -54,7 +54,9 @@ swarm-routing/.github if you have one (otherwise the server fetches a
 snapshot of the commit this repository's `.github/org-sync.lock` pins).
 [`server.json`](server.json) describes the server for the official
 [MCP Registry](https://registry.modelcontextprotocol.io) (#51); Commitizen
-keeps its version in step with each release.
+keeps its version in step with each release, and
+`.github/workflows/mcp-registry.yml` publishes it there on each release, by
+GitHub OIDC (no stored token).
 
 ## Security model
 
