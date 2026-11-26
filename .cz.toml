@@ -17,4 +17,5 @@ update_changelog_on_bump = true
 version_files = [
     "tools/swarm-mcp/swarm_mcp.py:^VERSION = ",
     "CITATION.cff:^version:",
+    'server.json:^  "version": ',
 ]

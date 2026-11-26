@@ -55,7 +55,7 @@ import threading
 import time
 
 NAME = "swarm-mcp"
-VERSION = "0.2.0"  # Commitizen moves it with .cz.toml and CITATION.cff on a release
+VERSION = "0.2.0"  # Commitizen moves it with .cz.toml, CITATION.cff and server.json
 HERE = os.path.dirname(os.path.abspath(__file__))
 ORG_TOOL = os.path.join(HERE, "org-tool")
 MODERN = ["2026-07-28"]
@@ -896,6 +896,23 @@ def self_test():
     check(
         cz is not None and cz.group(1) == VERSION,
         f"VERSION is .cz.toml's version ({VERSION})",
+    )
+    try:
+        with open(os.path.join(HERE, "..", "..", "server.json"), encoding="utf-8") as f:
+            sj = json.load(f)
+    except (OSError, ValueError):
+        sj = {}
+    # the MCP Registry's server.json (schema 2025-12-11): its required fields and limits
+    check(
+        sj.get("$schema")
+        == "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json"
+        and sj.get("name") == "io.github.swarm-routing/swarm-mcp"
+        and isinstance(sj.get("description"), str)
+        and 1 <= len(sj["description"]) <= 100
+        and sj.get("version") == VERSION
+        and sj.get("repository", {}).get("url") == "https://github.com/swarm-routing/swarm-mcp"
+        and sj.get("repository", {}).get("source") == "github",
+        f"server.json: the registry's required fields, its version VERSION ({VERSION})",
     )
     print(f"swarm_mcp self-test: {'ok' if not failures else f'{len(failures)} failed'}")
     return 1 if failures else 0

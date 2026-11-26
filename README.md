@@ -52,6 +52,9 @@ python3 -I /path/to/swarm-mcp/tools/swarm-mcp/swarm_mcp.py
 as a stdio server, with `ORG_TOOLS_DIR` set to a checkout of
 swarm-routing/.github if you have one (otherwise the server fetches a
 snapshot of the commit this repository's `.github/org-sync.lock` pins).
+[`server.json`](server.json) describes the server for the official
+[MCP Registry](https://registry.modelcontextprotocol.io) (#51); Commitizen
+keeps its version in step with each release.
 
 ## Security model
 
