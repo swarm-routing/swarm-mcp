@@ -9,7 +9,7 @@
 # tagged: Commitizen will not bump a version to itself).
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.1.0"
+version = "0.2.0"
 version_scheme = "semver"
 tag_format = "v$version"
 major_version_zero = true
