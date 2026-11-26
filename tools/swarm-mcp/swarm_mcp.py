@@ -532,7 +532,7 @@ def pin_test(env, project, check):
             tool = os.path.join(tree, "tools", "swarm-mcp", "org-tool")
             with open(tool, "w", encoding="utf-8") as dst:
                 dst.write(src.read())
-        os.chmod(tool, 0o755)
+        os.chmod(tool, 0o700)  # owner only (Sonar python:S2612)
         if lock:
             with open(os.path.join(tree, ".github", "org-sync.lock"), "w", encoding="utf-8") as f:
                 f.write("# a comment\n" + lock)
