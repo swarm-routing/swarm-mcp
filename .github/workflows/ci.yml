@@ -51,7 +51,7 @@ jobs:
           shellcheck tools/swarm-mcp/org-tool
 
   python:
-    uses: swarm-routing/.github/.github/workflows/reusable-python-ci.yml@7f8c948eea2bfe0142e663a8ddfbaadf58f3e709 # main@2026-11-26
+    uses: swarm-routing/.github/.github/workflows/reusable-python-ci.yml@1357292381b24488567d13efbdee747030cb126e # main@2026-11-27
     with:
       paths: tools
       tests: tools/swarm-mcp/test_swarm_mcp.py
